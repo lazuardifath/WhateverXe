@@ -3905,10 +3905,6 @@ void XE::init() {
 
 void XE::selectProfile(const XELP::Profile &profile) {
     xeProfile=profile;
-    // Opt-in workaround: on some TGL-H GT1 parts (physical 9A60, Acer Nitro 5 AN515-57 / i7-11800H)
-    // a GPU_TICKS (0x2910) read hangs the machine. The donor treats 0 as "no sample".
-    tglSkipGPUTicks=checkKernelArgument("-wex-skip-gputicks");
-    IORegistryEntry::getRegistryRoot()->setProperty("WhateverXeSkipGPUTicks",tglSkipGPUTicks);
     tglGT2Detected=profile.admitted() && !profile.overridden() && XELP::tigerLakeGT2Device(profile.identity);
     display12SmallGTDetected=profile.admitted() && XELP::display12SmallGT(profile.gt);
     adlsDisplaySelected=profile.admitted() && XELP::displayAdapter(profile.family)==XELP::DisplayAdapter::ADLS;
@@ -4426,6 +4422,10 @@ void XE::processKernel(KernelPatcher &patcher, DeviceInfo *info) {
 	// This must precede tglLoadHDMIWiring, tglPrepareMMIOUC and TGL FIA reads.
 	auto physicalGPU = OSDynamicCast(IOPCIDevice, info->videoBuiltin);
 	selectProfile(XELP::deviceProfile(physicalGPU));
+    // Opt-in workaround: on some TGL-H GT1 parts (physical 9A60, Acer Nitro 5 AN515-57 / i7-11800H)
+    // a GPU_TICKS (0x2910) read hangs the machine. The donor treats 0 as "no sample".
+    tglSkipGPUTicks = checkKernelArgument("-wex-skip-gputicks");
+    IORegistryEntry::getRegistryRoot()->setProperty("WhateverXeSkipGPUTicks", tglSkipGPUTicks);
     // ADLP_LOAD_ONLY_KERNEL: do not enter TGL MMIO/FIA, bootstrap or VM setup.
     const auto physicalEntry=XELP::deviceEntry(xeProfile.identity);
     adlpLoadOnly=physicalEntry && xeProfile.mobileDisplay13() &&
