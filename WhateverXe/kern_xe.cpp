@@ -3905,6 +3905,10 @@ void XE::init() {
 
 void XE::selectProfile(const XELP::Profile &profile) {
     xeProfile=profile;
+    // Opt-in workaround: on some TGL-H GT1 parts (physical 9A60, Acer Nitro 5 AN515-57 / i7-11800H)
+    // a GPU_TICKS (0x2910) read hangs the machine. The donor treats 0 as "no sample".
+    tglSkipGPUTicks=checkKernelArgument("-wex-skip-gputicks");
+    IORegistryEntry::getRegistryRoot()->setProperty("WhateverXeSkipGPUTicks",tglSkipGPUTicks);
     tglGT2Detected=profile.admitted() && !profile.overridden() && XELP::tigerLakeGT2Device(profile.identity);
     display12SmallGTDetected=profile.admitted() && XELP::display12SmallGT(profile.gt);
     adlsDisplaySelected=profile.admitted() && XELP::displayAdapter(profile.family)==XELP::DisplayAdapter::ADLS;
@@ -18135,6 +18139,8 @@ uint32_t XE::wrapTGLTopDDC(void *fb, int connection, uint32_t block, uint32_t ty
 }
 
 uint32_t XE::wrapTGLRegisterRead(void *access, unsigned long reg) {
+	if (reg == 0x2910 && callbackXE->tglSkipGPUTicks)
+		return 0;
  if(comboClockAccess(access))reg=comboClockTransaction.translation.reg(reg,XELPComboClock::donorPC(callbackXE->framebufferClockImage,reinterpret_cast<uintptr_t>(__builtin_return_address(0))));
  const bool trace=tglTransitionRegister(reg);
  if(trace)tglTransitionRecord(35,false,access,reg,tglConnectionCaller(__builtin_return_address(0)),0);
